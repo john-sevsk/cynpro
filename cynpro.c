@@ -15,7 +15,8 @@ enum
   CMD_COLOR_NONE,
   CMD_COLOR_GREEN,
   CMD_COLOR_BLUE,
-  CMD_COLOR_CYAN
+  CMD_COLOR_CYAN,
+  CMD_COLOR_MATE
 };
 
 enum
@@ -72,6 +73,9 @@ void led_color(libusb_device_handle* dev_h, int cmd)
     break;
   case CMD_COLOR_CYAN:
     led_color_rgb(dev_h, 0, 255, 255);
+    break;
+  case CMD_COLOR_MATE:
+    led_color_rgb(dev_h, 0, 204, 153);
     break;
   }
 }
@@ -251,8 +255,8 @@ int walk_devices()
 
 int parse_options(int argc, char** argv)
 {
-  char* help = "Usage: %s [-c green|blue|cyan] [-l on|off] [-b on|off|cycling] [-i 0-255]\n"
-    " -c Led color: green, blue, cyan\n"
+  char* help = "Usage: %s [-c green|blue|cyan|mate] [-l on|off] [-b on|off|cycling] [-i 0-255]\n"
+    " -c Led color: green, blue, cyan, mate\n"
     " -l Led state: on, off\n"
     " -b Led breathing mode: on, off, cycling\n"
     " -i Led intensity: 0-255\n";
@@ -279,6 +283,8 @@ int parse_options(int argc, char** argv)
         cmd_color = CMD_COLOR_BLUE;
       else if (strcmp(optarg, "cyan") == 0)
         cmd_color = CMD_COLOR_CYAN;
+      else if (strcmp(optarg, "mate") == 0)
+        cmd_color = CMD_COLOR_MATE;
       else
       {
         fprintf(stderr, "Valid -c arguments are: green, blue, cyan\n");

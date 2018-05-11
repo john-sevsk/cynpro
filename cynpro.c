@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <libusb.h>
+#include <getopt.h>
 
 #define USB_VID 0x1532
 #define USB_PID 0x020d

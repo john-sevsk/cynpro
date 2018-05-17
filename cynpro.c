@@ -5,6 +5,8 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <libusb.h>
+#include <stdbool.h>
+#include <getopt.h>
 
 #define USB_VID 0x1532
 #define USB_PID 0x020d
@@ -33,11 +35,43 @@ enum
   CMD_BREATHING_CYCLING
 };
 
+struct rgb {
+  uint8_t red;
+  uint8_t green;
+  uint8_t blue;
+  bool isSet;
+};
+
 int device_found = 0;
 int cmd_color = CMD_COLOR_NONE;
 int cmd_led = CMD_LED_NONE;
 int cmd_breathing = CMD_BREATHING_NONE;
 long cmd_led_intensity = -1;
+
+int option_index = 0;
+static struct rgb rgb_values = {
+  .red = 0,
+  .green = 0,
+  .blue = 0,
+  .isSet = false
+};
+
+static struct option long_options[] = {
+  {"rgb", required_argument,  0, 'g'},
+  {0,     0,                  0, 0}
+};
+
+uint8_t str2uint8 (char *str) {
+  char *x;
+  unsigned long value = 0;
+  for (x = str; *x; x++) {
+    if (!isdigit(*x)) {
+      return 0L;
+    }
+  }
+  value = strtol(str, 0L, 10);
+  return (value > 255 ? 255: value);
+}
 
 void led_color_rgb(libusb_device_handle* dev_h,
                   uint8_t r, uint8_t g, uint8_t b)
@@ -189,6 +223,13 @@ void operate_device(libusb_device_handle* dev_h)
   led_switch(dev_h, cmd_led);
   led_breathing(dev_h, cmd_breathing);
   led_intensity(dev_h, cmd_led_intensity);
+  if (rgb_values.isSet) {
+    led_color_rgb(
+            dev_h,
+            rgb_values.red,
+            rgb_values.green,
+            rgb_values.blue);
+  }
 }
 
 void claim_interface(libusb_device_handle* dev_h)
@@ -251,13 +292,19 @@ int walk_devices()
 
 int parse_options(int argc, char** argv)
 {
-  char* help = "Usage: %s [-c green|blue|cyan] [-l on|off] [-b on|off|cycling] [-i 0-255]\n"
+  char* help = "Usage: %s [-c green|blue|cyan] [-g <RGBColor>] [-l on|off] [-b on|off|cycling] [-i 0-255]\n"
     " -c Led color: green, blue, cyan\n"
+    " -g --rgb Led Color in RGB: 0-255,0-255,0-255\n"
+    "    Red Value is ignored, it seems Cynosa Pro doesn't have red leds.\n"
     " -l Led state: on, off\n"
     " -b Led breathing mode: on, off, cycling\n"
     " -i Led intensity: 0-255\n";
   int c;
   char* end;
+  int i = 0;
+  char *token;
+  char *str;
+  uint8_t value = 0;
 
   if (argc < 2)
   {
@@ -265,7 +312,7 @@ int parse_options(int argc, char** argv)
     return 1;
   }
 
-  while ((c = getopt(argc, argv, "hl:c:b:i:")) != -1)
+  while ((c = getopt_long(argc, argv, "hl:c:b:i:g:", long_options, &option_index)) != -1)
   {
     switch (c)
     {
@@ -284,6 +331,30 @@ int parse_options(int argc, char** argv)
         fprintf(stderr, "Valid -c arguments are: green, blue, cyan\n");
         return 1;
       }
+      break;
+    case 'g':
+      str = strdup(optarg);
+      while ((token = strsep(&optarg, ",")))
+      {
+        value = strcmp(token, "") == 0 ? 0: str2uint8(token);
+        switch (i)
+        {
+          case 0:
+            rgb_values.red = value;
+            break;
+          case 1:
+            rgb_values.green = value;
+            break;
+          case 2:
+            rgb_values.blue = value;
+            break;
+          default:
+            break;
+        }
+        i++;
+      }
+      free(str);
+      rgb_values.isSet = true;
       break;
     case 'l':
       if (strcmp(optarg, "on") == 0)
